@@ -129,7 +129,7 @@ COLLANE = {
         ),
         "sistema": "D&D 5ª ed.", "editore": "Wizards of the Coast",
         "editore_url": "https://dnd.wizards.com/",
-        "volumi": ["talabec", "torre", "principe", "diplomazia", "invasione"],
+        "volumi": ["talabec", "torre", "principe", "diplomazia", "invasione", "bosco", "vecchi"],
     },
     # --- Apocalisse ----------------------------------------------------------
     "terre-desolate": {

@@ -19,10 +19,13 @@ Uscita, per ogni collana:
 Aggiungere una collana = una voce in COLLANE. Il resto è già scritto.
 """
 
+import datetime
+import filecmp
 import glob
 import html
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -88,6 +91,9 @@ COLLANE = {
         # ogni racconto ha la sua pagina e, accanto alla catena del volume, esiste
         # il filo cronologico degli eventi. Fonte: la Timeline della bibbia di serie.
         "cronologia": "assets/canone_serie.md",
+        # teaser animato della collana: <progetto>/teaser/<nome>.mp4 + .jpg (fotogramma d'attesa),
+        # copiati accanto all'indice e mostrati sotto l'occhiello
+        "teaser": "teaser/ciclo-di-korvaal-teaser",
         "volumi": [("origini", "origini", "spezza"),
                    ("estarosa", "estarosa", "spezza"),
                    ("cronache", "cronache", "spezza"),
@@ -516,6 +522,34 @@ def pagina_volume(coll, slug_coll, v, precedente, successivo):
 # --------------------------------------------------------------------------
 # Indice della collana
 # --------------------------------------------------------------------------
+def copia_teaser(progetto, nome, uscita):
+    """Il teaser vive nel progetto; accanto all'indice se ne copia il video e il
+    fotogramma d'attesa, solo se sono cambiati (la data del file è la data del video)."""
+    base = os.path.basename(nome)
+    for est in (".mp4", ".jpg"):
+        sorgente = os.path.join(progetto, nome + est)
+        if not os.path.exists(sorgente):
+            sys.exit("manca il teaser: %s" % sorgente)
+        dest = os.path.join(uscita, base + est)
+        if not (os.path.exists(dest) and filecmp.cmp(sorgente, dest, shallow=False)):
+            shutil.copy2(sorgente, dest)
+    return base
+
+
+def riquadro_teaser(base):
+    """Sotto l'occhiello: niente autoplay, parte con la musica e la decide chi legge."""
+    return (
+        '<style>.teaser{margin:1.75rem 0 .5rem}.teaser video{display:block;width:100%%;height:auto;'
+        'aspect-ratio:16/9;background:#0d0c0c;border-radius:6px}.teaser figcaption{font-size:.88em;'
+        'line-height:1.45;opacity:.78;margin-top:.55em}</style>\n'
+        '<figure class="teaser"><video controls preload="none" playsinline poster="%s.jpg" '
+        'aria-describedby="teaser-nota"><source src="%s.mp4" type="video/mp4">'
+        '<a href="%s.mp4">Scarica il teaser (MP4)</a></video>'
+        '<figcaption id="teaser-nota">Il teaser della collana: 25 secondi, con musica. Le parole a '
+        'schermo vengono dalla nota introduttiva dell\'edizione completa.</figcaption></figure>\n'
+        % (e(base), e(base), e(base)))
+
+
 def pagina_collana(coll, slug_coll, volumi):
     url = "%s/leggi/%s/" % (DOMINIO, slug_coll)
     carte = []
@@ -560,6 +594,16 @@ def pagina_collana(coll, slug_coll, volumi):
         "numberOfItems": len(volumi),
         "hasPart": dentro,
     }
+    if coll.get("_teaser"):
+        video = os.path.join(QUI, "leggi", slug_coll, coll["_teaser"] + ".mp4")
+        collana["video"] = {
+            "@type": "VideoObject", "name": "%s — il teaser" % coll["titolo"],
+            "description": "Teaser animato di 25 secondi, con musica, della collana.",
+            "encodingFormat": "video/mp4", "duration": "PT25S", "inLanguage": "it",
+            "contentUrl": url_collana + coll["_teaser"] + ".mp4",
+            "thumbnailUrl": url_collana + coll["_teaser"] + ".jpg",
+            "uploadDate": datetime.date.fromtimestamp(os.path.getmtime(video)).isoformat(),
+        }
     if coll.get("_crono"):
         collana["workExample"] = {
             "@type": "ItemList", "name": "Il filo degli eventi",
@@ -603,6 +647,7 @@ def pagina_collana(coll, slug_coll, volumi):
         + '<p class="kicker">Collana · Brainstorm Club%s</p>\n' % badge
         + '<h1>%s</h1>\n' % e(coll["titolo"])
         + '<p class="occhiello">%s</p>\n' % e(coll["occhiello"])
+        + (riquadro_teaser(coll["_teaser"]) if coll.get("_teaser") else "")
         + '<p class="credito">Tratto dalle campagne di <strong>%s</strong> · %s%s. '
           'Lettura libera dal browser; ogni volume è disponibile anche in EPUB.</p>\n'
           % (e(coll["sistema"]), editore, (" — " + e(coll["curatore"])) if coll.get("curatore") else "")
@@ -802,6 +847,9 @@ def costruisci(slug_coll):
             f.write(pagina_volume(coll, slug_coll, pag, prima, dopo))
         segno = "   └ " if pag["tipo"] == "parte" else "  "
         print("%s%-30s %6s  ≈%3d min  %5d parole" % (segno, pag["slug"] + ".html", peso(percorso), pag["minuti"], pag["parole"]))
+
+    if coll.get("teaser"):
+        coll["_teaser"] = copia_teaser(progetto, coll["teaser"], uscita)
 
     percorso = os.path.join(uscita, "index.html")
     with open(percorso, "w", encoding="utf-8") as f:

@@ -111,6 +111,10 @@ se rientrano.
 Sul sito i fascicoli mantengono gli URL di sempre (`avventure/<slug>-web.html`): sono indicizzati, non
 si spostano.
 
+I fascicoli con teaser hanno accanto `avventure/<slug>-teaser.mp4`: **non è incorporato** nella
+pagina (pesa più di lei), quindi va caricato via FTP insieme al `-web.html`, o il riquadro resta
+vuoto. Il fotogramma d'attesa invece è dentro la pagina.
+
 ## La home
 
 Nella sezione `#libri`, ogni card ha «**Leggi online**» come link primario e l'EPUB retrocesso a
